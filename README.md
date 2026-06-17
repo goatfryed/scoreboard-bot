@@ -52,7 +52,7 @@ Upload details
 curl -X POST \                                                              ✔  OVERTYPE 
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer $GITHUB_PAT" \
-  https://api.github.com/repos/goatfryed/nw-scoreboard-reader/actions/workflows/pipeline.yml/dispatches \
+  https://api.github.com/repos/goatfryed/nw-scoreboard-reader/actions/workflows/parse-clip.yml/dispatches \
   -d '{"ref":"main","inputs":{"clip_url":"https://clips.twitch.tv/FancyBoxyGorillaCharlieBitMe-_sP2n_BFm8cLvTZ2","mode":"opr1920"}}'
 ```
 to dispatch clip processing.

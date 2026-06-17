@@ -8,7 +8,7 @@ dotenv.config({ path: '.env' });
 
 const owner = process.env.GITHUB_OWNER || '';
 const repo = process.env.GITHUB_REPO || '';
-const workflowId = process.env.GITHUB_WORKFLOW_ID || 'pipeline.yml';
+const workflowId = process.env.GITHUB_WORKFLOW_ID || 'parse-clip.yml';
 const auth = process.env.GITHUB_PAT || '';
 
 if (!owner || !repo || !auth) {

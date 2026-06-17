@@ -12,6 +12,14 @@ export interface GuildConfig {
   pingRoleId: string | null;
 }
 
+export interface Submission {
+  guildId: string;
+  messageId: string | null;
+  mode: string;
+  parseWorkflowRunId: number | null;
+  screenshotWorkflowRunId: number | null;
+}
+
 let db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
 
 export async function initDatabase(): Promise<void> {
@@ -39,6 +47,16 @@ export async function initDatabase(): Promise<void> {
       streamerName TEXT,
       resolution TEXT,
       PRIMARY KEY (guildId, streamerName)
+    )
+  `);
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS submissions (
+      guildId TEXT PRIMARY KEY,
+      messageId TEXT,
+      mode TEXT,
+      parseWorkflowRunId INTEGER,
+      screenshotWorkflowRunId INTEGER
     )
   `);
 
@@ -104,6 +122,44 @@ export async function deleteStreamerResolution(guildId: string, streamerName: st
     'DELETE FROM streamer_resolutions WHERE guildId = ? AND streamerName = ?',
     guildId,
     streamerName.toLowerCase()
+  );
+}
+
+export async function getLastSubmission(guildId: string): Promise<Submission | null> {
+  if (!db) throw new Error('Database not initialized');
+  const result = await db.get<Submission>(
+    'SELECT guildId, messageId, mode, parseWorkflowRunId, screenshotWorkflowRunId FROM submissions WHERE guildId = ?',
+    guildId
+  );
+  return result || null;
+}
+
+export async function setSubmission(submission: Submission): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+  await db.run(
+    `INSERT OR REPLACE INTO submissions (guildId, messageId, mode, parseWorkflowRunId, screenshotWorkflowRunId)
+     VALUES (?, ?, ?, ?, ?)`,
+    submission.guildId,
+    submission.messageId,
+    submission.mode,
+    submission.parseWorkflowRunId,
+    submission.screenshotWorkflowRunId
+  );
+}
+
+export async function updateSubmission(guildId: string, updates: Partial<Omit<Submission, 'guildId'>>): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+
+  const fields = Object.keys(updates);
+  if (fields.length === 0) return;
+
+  const setClause = fields.map(field => `${field} = ?`).join(', ');
+  const values = fields.map(field => (updates as any)[field]);
+
+  await db.run(
+    `UPDATE submissions SET ${setClause} WHERE guildId = ?`,
+    ...values,
+    guildId
   );
 }
 

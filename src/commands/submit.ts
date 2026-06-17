@@ -7,7 +7,7 @@ import {
   AttachmentBuilder,
   TextChannel
 } from 'discord.js';
-import { getConfiguration, getStreamerResolution } from '../database.js';
+import { getConfiguration, getStreamerResolution, setSubmission, updateSubmission } from '../database.js';
 import { dispatchWorkflow, pollWorkflowRun, downloadArtifacts } from '../github.js';
 
 export const submitCommand = new SlashCommandBuilder()
@@ -93,10 +93,19 @@ export async function handleSubmit(interaction: ChatInputCommandInteraction): Pr
   activeSubmissions.add(guildId);
 
   try {
-    const runId = await dispatchWorkflow(clipUrl, finalMode);
+    const runId = await dispatchWorkflow({ clip_url: clipUrl, mode: finalMode });
+
+    await setSubmission({
+      guildId,
+      messageId: null,
+      mode: finalMode,
+      parseWorkflowRunId: runId,
+      screenshotWorkflowRunId: null
+    });
 
     await interaction.reply({
       content: 'Accepted, please await processing...',
+      flags: MessageFlags.Ephemeral,
     });
 
     // Run the processing pipeline in the background
@@ -164,13 +173,19 @@ async function processWorkflowInBackground(
     );
 
     const ping = config.pingRoleId ? `<@&${config.pingRoleId}> ` : '';
-    await targetChannel.send({
+    const message = await targetChannel.send({
       content: `Stats are up!\n` +
         `- 📊 [Google Sheets](${config.sheetsUrl})\n` +
         `- 🎬 [Source Clip](${clipUrl})\n` +
         `${ping}`,
       files: attachments,
     });
+
+    try {
+      await updateSubmission(config.guildId, { messageId: message.id });
+    } catch (dbErr) {
+      console.error('Failed to update submission message ID in database:', dbErr);
+    }
   } catch (error: any) {
     const errorMessage = `Scoreboard submission processing failed.\n` +
       `- **Clip**: ${clipUrl}\n` +

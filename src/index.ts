@@ -5,6 +5,7 @@ import { handleSetup } from './commands/setup.js';
 import { handleConfigure } from './commands/configure.js';
 import { handleResolution } from './commands/resolution.js';
 import { handleSubmit, handleAutocomplete } from './commands/submit.js';
+import { handleUpdate } from './commands/update.js';
 
 // Load env files
 dotenv.config({ path: '.env.local' });
@@ -36,6 +37,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       await handleResolution(interaction);
     } else if (interaction.commandName === 'scoreboard-submit') {
       await handleSubmit(interaction);
+    } else if (interaction.commandName === 'scoreboard-update') {
+      await handleUpdate(interaction);
     }
   } else if (interaction.isAutocomplete()) {
     if (interaction.commandName === 'scoreboard-submit') {

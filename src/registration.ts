@@ -4,12 +4,13 @@ import { setupCommand } from './commands/setup.js';
 import { configureCommand } from './commands/configure.js';
 import { resolutionCommand } from './commands/resolution.js';
 import { submitCommand } from './commands/submit.js';
+import { updateCommand } from './commands/update.js';
 
 // Load env files
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 
-export const commands = [setupCommand, configureCommand, resolutionCommand, submitCommand];
+export const commands = [setupCommand, configureCommand, resolutionCommand, submitCommand, updateCommand];
 
 async function registerCommands() {
   const token = process.env.DISCORD_TOKEN;
@@ -28,10 +29,10 @@ async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(token);
 
   try {
-    console.log('Registering configure, setup, and resolution commands globally...');
+    console.log('Registering configure, setup, resolution, and update commands globally...');
     await rest.put(
       Routes.applicationCommands(clientId),
-      { body: [setupCommand.toJSON(), configureCommand.toJSON(), resolutionCommand.toJSON()] }
+      { body: [setupCommand.toJSON(), configureCommand.toJSON(), resolutionCommand.toJSON(), updateCommand.toJSON()] }
     );
 
     // Fetch all servers the bot is currently joined to

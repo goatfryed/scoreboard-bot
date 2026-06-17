@@ -26,21 +26,22 @@ export interface ArtifactFile {
  * Dispatches the workflow and returns the run ID.
  * Uses return_run_details if supported, with a robust fallback to list workflow runs.
  */
-export async function dispatchWorkflow(clipUrl: string, mode: string): Promise<number> {
+export async function dispatchWorkflow(
+  inputs: Record<string, string>,
+  customWorkflowId?: string
+): Promise<number> {
   const startTime = Date.now() - 5000; // Offset by 5s to handle clock skew
+  const targetWorkflowId = customWorkflowId || workflowId;
 
   const response = await octokit.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches', {
     owner,
     repo,
-    workflow_id: workflowId,
+    workflow_id: targetWorkflowId,
     headers: {
       'X-GitHub-Api-Version': '2022-11-28',
     },
     ref: 'main',
-    inputs: {
-      clip_url: clipUrl,
-      mode: mode,
-    },
+    inputs: inputs,
     return_run_details: true,
   });
 
@@ -58,7 +59,7 @@ export async function dispatchWorkflow(clipUrl: string, mode: string): Promise<n
   const { data } = await octokit.actions.listWorkflowRuns({
     owner,
     repo,
-    workflow_id: workflowId,
+    workflow_id: targetWorkflowId,
     per_page: 5,
   });
 

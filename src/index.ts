@@ -12,7 +12,9 @@ import dotenv from 'dotenv';
 import {
   initDatabase,
   getConfiguration,
-  setConfiguration
+  setConfiguration,
+  setStreamerResolution,
+  getStreamerResolution
 } from './database.js';
 import {
   dispatchWorkflow,
@@ -49,6 +51,8 @@ client.on('interactionCreate', async (interaction: Interaction) => {
       await handleSetup(interaction);
     } else if (interaction.commandName === 'scoreboard-configure') {
       await handleConfigure(interaction);
+    } else if (interaction.commandName === 'scoreboard-resolution') {
+      await handleResolution(interaction);
     } else if (interaction.commandName === 'scoreboard-submit') {
       await handleSubmit(interaction);
     }
@@ -161,6 +165,39 @@ async function handleConfigure(interaction: any): Promise<void> {
   }
 }
 
+async function handleResolution(interaction: any): Promise<void> {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({ 
+      content: 'Error: This command can only be used within a server (guild).', 
+      flags: MessageFlags.Ephemeral 
+    });
+    return;
+  }
+
+  const streamer = interaction.options.getString('streamer', true).trim().toLowerCase();
+  const resolution = interaction.options.getString('resolution', true).trim();
+
+  try {
+    await setStreamerResolution(guildId, streamer, resolution);
+    await interaction.reply({
+      content: `Default resolution for **${streamer}** set to \`${resolution}\`!`,
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (error) {
+    console.error('Error saving streamer resolution:', error);
+    await interaction.reply({ 
+      content: 'An error occurred while saving the streamer resolution.', 
+      flags: MessageFlags.Ephemeral 
+    });
+  }
+}
+
+function extractStreamer(url: string): string | null {
+  const match = url.match(/twitch\.tv\/([a-zA-Z0-9_\-]+)\/clip\//i);
+  return match ? match[1].toLowerCase() : null;
+}
+
 async function handleSubmit(interaction: any): Promise<void> {
   const guildId = interaction.guildId;
   if (!guildId) {
@@ -190,7 +227,30 @@ async function handleSubmit(interaction: any): Promise<void> {
   }
 
   const clipUrl = interaction.options.getString('clip', true).trim();
-  const resolution = interaction.options.getString('resolution', true).trim();
+  let resolution = interaction.options.getString('resolution')?.trim();
+
+  if (!resolution) {
+    const streamer = extractStreamer(clipUrl);
+    if (!streamer) {
+      await interaction.reply({
+        content: '❌ Error: Could not determine the streamer name from the Twitch clip URL. Please specify the `resolution` parameter manually.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const defaultRes = await getStreamerResolution(guildId, streamer);
+    if (!defaultRes) {
+      await interaction.reply({
+        content: `❌ Error: No default resolution is configured for streamer **${streamer}**. Please specify the \`resolution\` parameter manually, or configure a default using \`/scoreboard-resolution\`.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    resolution = defaultRes;
+  }
+
   const finalMode = `${config.mode}${resolution}`;
 
   // Acquire lock

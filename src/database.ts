@@ -33,6 +33,15 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS streamer_resolutions (
+      guildId TEXT,
+      streamerName TEXT,
+      resolution TEXT,
+      PRIMARY KEY (guildId, streamerName)
+    )
+  `);
+
   // Migration: Add pingRoleId column if it does not exist in an already existing table
   try {
     await db.exec('ALTER TABLE configurations ADD COLUMN pingRoleId TEXT');
@@ -65,6 +74,36 @@ export async function setConfiguration(config: GuildConfig): Promise<void> {
     config.resolutions,
     config.errorChannelId,
     config.pingRoleId
+  );
+}
+
+export async function setStreamerResolution(guildId: string, streamerName: string, resolution: string): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+  await db.run(
+    `INSERT OR REPLACE INTO streamer_resolutions (guildId, streamerName, resolution)
+     VALUES (?, ?, ?)`,
+    guildId,
+    streamerName.toLowerCase(),
+    resolution
+  );
+}
+
+export async function getStreamerResolution(guildId: string, streamerName: string): Promise<string | null> {
+  if (!db) throw new Error('Database not initialized');
+  const result = await db.get<{ resolution: string }>(
+    'SELECT resolution FROM streamer_resolutions WHERE guildId = ? AND streamerName = ?',
+    guildId,
+    streamerName.toLowerCase()
+  );
+  return result ? result.resolution : null;
+}
+
+export async function deleteStreamerResolution(guildId: string, streamerName: string): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+  await db.run(
+    'DELETE FROM streamer_resolutions WHERE guildId = ? AND streamerName = ?',
+    guildId,
+    streamerName.toLowerCase()
   );
 }
 

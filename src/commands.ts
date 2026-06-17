@@ -45,6 +45,21 @@ export const configureCommand = new SlashCommandBuilder()
       .setRequired(false)
   );
 
+export const resolutionCommand = new SlashCommandBuilder()
+  .setName('scoreboard-resolution')
+  .setDescription('Configures a default resolution for a specific streamer on this server')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .addStringOption(option =>
+    option.setName('streamer')
+      .setDescription('Twitch username of the streamer')
+      .setRequired(true)
+  )
+  .addStringOption(option =>
+    option.setName('resolution')
+      .setDescription('The default resolution for this streamer (e.g. 1920)')
+      .setRequired(true)
+  );
+
 export const submitCommand = new SlashCommandBuilder()
   .setName('scoreboard-submit')
   .setDescription('Submits a twitch clip to the scoreboard processing pipeline')
@@ -58,10 +73,10 @@ export const submitCommand = new SlashCommandBuilder()
     option.setName('resolution')
       .setDescription('The resolution of the video')
       .setAutocomplete(true)
-      .setRequired(true)
+      .setRequired(false)
   );
 
-export const commands = [setupCommand, configureCommand, submitCommand];
+export const commands = [setupCommand, configureCommand, resolutionCommand, submitCommand];
 
 async function registerCommands() {
   const token = process.env.DISCORD_TOKEN;
@@ -80,10 +95,10 @@ async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(token);
 
   try {
-    console.log('Registering configure and setup commands globally...');
+    console.log('Registering configure, setup, and resolution commands globally...');
     await rest.put(
       Routes.applicationCommands(clientId),
-      { body: [setupCommand.toJSON(), configureCommand.toJSON()] }
+      { body: [setupCommand.toJSON(), configureCommand.toJSON(), resolutionCommand.toJSON()] }
     );
 
     // Fetch all servers the bot is currently joined to

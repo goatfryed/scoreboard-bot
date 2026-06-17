@@ -165,9 +165,9 @@ async function processWorkflowInBackground(
 
     const ping = config.pingRoleId ? `<@&${config.pingRoleId}> ` : '';
     await targetChannel.send({
-      content: `**Stats are up!**\n` +
-        `- [Google sheets 🔗](${config.sheetsUrl})\n` +
-        `- [Source Clip 🎬](${clipUrl})\n` +
+      content: `Stats are up!\n` +
+        `- 📊 [Google Sheets](${config.sheetsUrl})\n` +
+        `- 🎬 [Source Clip](${clipUrl})\n` +
         `${ping}`,
       files: attachments,
     });

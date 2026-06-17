@@ -5,7 +5,8 @@ import {
   ChannelType, 
   TextChannel, 
   AttachmentBuilder,
-  Events
+  Events,
+  MessageFlags
 } from 'discord.js';
 import dotenv from 'dotenv';
 import { 
@@ -58,7 +59,7 @@ async function handleConfigure(interaction: any): Promise<void> {
   if (!guildId) {
     await interaction.reply({ 
       content: 'Error: This command can only be used within a server (guild).', 
-      ephemeral: true 
+      flags: MessageFlags.Ephemeral 
     });
     return;
   }
@@ -72,7 +73,7 @@ async function handleConfigure(interaction: any): Promise<void> {
   if (targetChannel.type !== ChannelType.GuildText) {
     await interaction.reply({ 
       content: 'Error: The target channel must be a text channel.', 
-      ephemeral: true 
+      flags: MessageFlags.Ephemeral 
     });
     return;
   }
@@ -80,7 +81,7 @@ async function handleConfigure(interaction: any): Promise<void> {
   if (errorChannel && errorChannel.type !== ChannelType.GuildText) {
     await interaction.reply({ 
       content: 'Error: The error channel must be a text channel.', 
-      ephemeral: true 
+      flags: MessageFlags.Ephemeral 
     });
     return;
   }
@@ -102,13 +103,13 @@ async function handleConfigure(interaction: any): Promise<void> {
                `- **Sheets URL**: <${sheetsUrl}>\n` +
                `- **Resolutions**: \`${resolutions}\`\n` +
                `- **Error Channel**: ${errorChannel ? `<#${errorChannel.id}>` : '*None configured*'}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
     console.error('Error saving server configuration:', error);
     await interaction.reply({ 
       content: 'An error occurred while saving the configuration.', 
-      ephemeral: true 
+      flags: MessageFlags.Ephemeral 
     });
   }
 }
@@ -118,7 +119,7 @@ async function handleSubmit(interaction: any): Promise<void> {
   if (!guildId) {
     await interaction.reply({
       content: 'Error: This command can only be used within a server (guild).',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -128,7 +129,7 @@ async function handleSubmit(interaction: any): Promise<void> {
   if (!config) {
     await interaction.reply({
       content: 'This server is not configured yet. An administrator must configure it first using `/scoreboard-configure`.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -142,7 +143,6 @@ async function handleSubmit(interaction: any): Promise<void> {
 
     await interaction.reply({
       content: 'Accepted, please await processing...',
-      ephemeral: false,
     });
 
     // Run the processing pipeline in the background
@@ -151,7 +151,7 @@ async function handleSubmit(interaction: any): Promise<void> {
     console.error('Failed to dispatch workflow:', error);
     await interaction.reply({
       content: `Error: Failed to trigger the processing pipeline. Details: ${error.message || error}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

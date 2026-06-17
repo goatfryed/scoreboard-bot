@@ -24,12 +24,18 @@ export interface ArtifactFile {
 
 /**
  * Dispatches the workflow and returns the run ID.
+ * Uses return_run_details if supported, with a robust fallback to list workflow runs.
  */
 export async function dispatchWorkflow(clipUrl: string, mode: string): Promise<number> {
+  const startTime = Date.now() - 5000; // Offset by 5s to handle clock skew
+
   const response = await octokit.request('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches', {
     owner,
     repo,
     workflow_id: workflowId,
+    headers: {
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
     ref: 'main',
     inputs: {
       clip_url: clipUrl,
@@ -38,12 +44,35 @@ export async function dispatchWorkflow(clipUrl: string, mode: string): Promise<n
     return_run_details: true,
   });
 
-  const runId = (response.data as any).workflow_run_id;
-  if (!runId) {
-    throw new Error('Workflow was dispatched, but no run ID was returned in the response.');
+  const runId = (response.data as any)?.workflow_run_id;
+  if (runId) {
+    return runId;
   }
 
-  return runId;
+  // Fallback: poll the workflow runs list to find the newly created run
+  console.log('workflow_run_id not in response. Falling back to listing runs...');
+  
+  // Wait a moment for GitHub to register the run
+  await new Promise((resolve) => setTimeout(resolve, 6000));
+
+  const { data } = await octokit.actions.listWorkflowRuns({
+    owner,
+    repo,
+    workflow_id: workflowId,
+    per_page: 5,
+  });
+
+  // Find the most recent run created after we triggered it
+  const matchingRun = data.workflow_runs.find((run) => {
+    const runCreatedTime = new Date(run.created_at).getTime();
+    return runCreatedTime >= startTime;
+  });
+
+  if (!matchingRun) {
+    throw new Error('Workflow was dispatched, but the run ID could not be retrieved from response or recent runs list.');
+  }
+
+  return matchingRun.id;
 }
 
 /**

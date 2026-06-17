@@ -38,7 +38,7 @@ export async function dispatchWorkflow(clipUrl: string, mode: string): Promise<n
     return_run_details: true,
   });
 
-  const runId = (response.data as any).run_id;
+  const runId = (response.data as any).workflow_run_id;
   if (!runId) {
     throw new Error('Workflow was dispatched, but no run ID was returned in the response.');
   }

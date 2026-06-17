@@ -4,7 +4,8 @@ import {
   Interaction, 
   ChannelType, 
   TextChannel, 
-  AttachmentBuilder
+  AttachmentBuilder,
+  Events
 } from 'discord.js';
 import dotenv from 'dotenv';
 import { 
@@ -29,7 +30,7 @@ const client = new Client({
   ],
 });
 
-client.once('ready', async () => {
+client.once(Events.ClientReady, async () => {
   try {
     await initDatabase();
     console.log(`Bot logged in as ${client.user?.tag} and database initialized.`);

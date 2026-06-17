@@ -134,7 +134,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     }
 
     const config = await getConfiguration(guildId);
-    if (!config) {
+    if (!config || !config.resolutions) {
       await interaction.respond([]);
       return;
     }

@@ -89,6 +89,8 @@ export async function handleSubmit(interaction: ChatInputCommandInteraction): Pr
 
   const finalMode = `${config.mode}${resolution}`;
 
+  console.log(`[Submit] User ${interaction.user.tag} (${interaction.user.id}) submitted clip ${clipUrl} for server ${interaction.guild?.name || guildId} (${guildId}) with mode ${finalMode}`);
+
   // Acquire lock
   activeSubmissions.add(guildId);
 
@@ -113,7 +115,7 @@ export async function handleSubmit(interaction: ChatInputCommandInteraction): Pr
   } catch (error: any) {
     // Release lock on immediate dispatch failure
     activeSubmissions.delete(guildId);
-    console.error('Failed to dispatch workflow:', error);
+    console.error(`[Submit Failed] ${interaction.user.tag}(${interaction.user.id})@${interaction.guild?.name || guildId}: Failed to dispatch workflow:`, error);
     await interaction.reply({
       content: `Error: Failed to trigger the processing pipeline. Details: ${error.message || error}`,
       flags: MessageFlags.Ephemeral,
@@ -159,6 +161,9 @@ async function processWorkflowInBackground(
   userId: string,
   client: any
 ): Promise<void> {
+  const guild = await client.guilds.fetch(config.guildId).catch(() => null);
+  const serverName = guild?.name || config.guildId;
+
   try {
     await pollWorkflowRun(runId);
     const files = await downloadArtifacts(runId);
@@ -181,6 +186,8 @@ async function processWorkflowInBackground(
       files: attachments,
     });
 
+    console.log(`[Submit Success] @${serverName}: Parse succeeded. Message ID: ${message.id}`);
+
     try {
       await updateSubmission(config.guildId, { messageId: message.id });
     } catch (dbErr) {
@@ -191,7 +198,7 @@ async function processWorkflowInBackground(
       `- **Clip**: ${clipUrl}\n` +
       `- **Error**: ${error.message || error}`;
 
-    console.error(errorMessage);
+    console.error(`[Submit Failed] @${serverName}: Parse failed. Error: ${error.message || error}`);
 
     // Notify submitting user via DM
     try {

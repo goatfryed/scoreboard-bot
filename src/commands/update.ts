@@ -53,6 +53,8 @@ export async function handleUpdate(interaction: ChatInputCommandInteraction): Pr
     return;
   }
 
+  console.log(`[Update] ${interaction.user.tag}(${interaction.user.id})@${interaction.guild?.name || guildId}: Submitted update`);
+
   // Acquire lock
   activeUpdates.add(guildId);
 
@@ -75,7 +77,7 @@ export async function handleUpdate(interaction: ChatInputCommandInteraction): Pr
     processUpdateInBackground(runId, lastSub, config, interaction.user.id, interaction.client);
   } catch (error: any) {
     activeUpdates.delete(guildId);
-    console.error('Failed to dispatch update workflow:', error);
+    console.error(`[Update Failed] ${interaction.user.tag}(${interaction.user.id})@${interaction.guild?.name || guildId}: Failed to dispatch update workflow:`, error);
     await interaction.reply({
       content: `Error: Failed to trigger the update pipeline. Details: ${error.message || error}`,
       flags: MessageFlags.Ephemeral,
@@ -90,6 +92,9 @@ async function processUpdateInBackground(
   userId: string,
   client: any
 ): Promise<void> {
+  const guild = await client.guilds.fetch(config.guildId).catch(() => null);
+  const serverName = guild?.name || config.guildId;
+
   try {
     await pollWorkflowRun(runId);
     const files = await downloadArtifacts(runId);
@@ -119,11 +124,17 @@ async function processUpdateInBackground(
       attachments: keptAttachments,
       files: newAttachments,
     });
+
+    if (files.length > 0) {
+      console.log(`[Update Success] @${serverName}: Screenshot update succeeded with ${files.length} screenshots.`);
+    } else {
+      console.warn(`[Update Warning] @${serverName}: Screenshot update succeeded but no screenshots were found in artifacts.`);
+    }
   } catch (error: any) {
     const errorMessage = `Scoreboard update processing failed.\n` +
       `- **Error**: ${error.message || error}`;
 
-    console.error(errorMessage);
+    console.error(`[Update Failed] @${serverName}: Screenshot update failed. Error: ${error.message || error}`);
 
     // Notify submitting user via DM
     try {

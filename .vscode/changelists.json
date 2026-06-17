@@ -1,0 +1,13 @@
+{
+  "changelists": [
+    {
+      "name": "Default",
+      "files": [
+        "README.md",
+        ".vscode/changelists.json",
+        ".cursorrules"
+      ]
+    }
+  ],
+  "active": "Default"
+}

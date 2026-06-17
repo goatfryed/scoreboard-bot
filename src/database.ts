@@ -1,0 +1,61 @@
+import { open, Database } from 'sqlite';
+import sqlite3 from 'sqlite3';
+import path from 'path';
+
+export interface GuildConfig {
+  guildId: string;
+  targetChannelId: string;
+  mode: string;
+  sheetsUrl: string;
+  resolutions: string; // Comma-separated list (e.g. "1920,2560")
+  errorChannelId: string | null;
+}
+
+let db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
+
+export async function initDatabase(): Promise<void> {
+  const dbPath = path.join(process.cwd(), 'database.sqlite');
+  db = await open({
+    filename: dbPath,
+    driver: sqlite3.Database
+  });
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS configurations (
+      guildId TEXT PRIMARY KEY,
+      targetChannelId TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      sheetsUrl TEXT NOT NULL,
+      resolutions TEXT NOT NULL,
+      errorChannelId TEXT
+    )
+  `);
+}
+
+export async function getConfiguration(guildId: string): Promise<GuildConfig | null> {
+  if (!db) throw new Error('Database not initialized');
+  const result = await db.get<GuildConfig>(
+    'SELECT guildId, targetChannelId, mode, sheetsUrl, resolutions, errorChannelId FROM configurations WHERE guildId = ?',
+    guildId
+  );
+  return result || null;
+}
+
+export async function setConfiguration(config: GuildConfig): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+  await db.run(
+    `INSERT OR REPLACE INTO configurations (guildId, targetChannelId, mode, sheetsUrl, resolutions, errorChannelId)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    config.guildId,
+    config.targetChannelId,
+    config.mode,
+    config.sheetsUrl,
+    config.resolutions,
+    config.errorChannelId
+  );
+}
+
+export async function deleteConfiguration(guildId: string): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+  await db.run('DELETE FROM configurations WHERE guildId = ?', guildId);
+}

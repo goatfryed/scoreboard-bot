@@ -1,23 +1,23 @@
-import { 
-  Client, 
-  GatewayIntentBits, 
-  Interaction, 
-  ChannelType, 
-  TextChannel, 
+import {
+  Client,
+  GatewayIntentBits,
+  Interaction,
+  ChannelType,
+  TextChannel,
   AttachmentBuilder,
   Events,
   MessageFlags
 } from 'discord.js';
 import dotenv from 'dotenv';
-import { 
-  initDatabase, 
-  getConfiguration, 
-  setConfiguration 
+import {
+  initDatabase,
+  getConfiguration,
+  setConfiguration
 } from './database.js';
-import { 
-  dispatchWorkflow, 
-  pollWorkflowRun, 
-  downloadArtifacts 
+import {
+  dispatchWorkflow,
+  pollWorkflowRun,
+  downloadArtifacts
 } from './github.js';
 
 // Load env files
@@ -45,7 +45,9 @@ client.once(Events.ClientReady, async () => {
 
 client.on('interactionCreate', async (interaction: Interaction) => {
   if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === 'scoreboard-configure') {
+    if (interaction.commandName === 'scoreboard-setup') {
+      await handleSetup(interaction);
+    } else if (interaction.commandName === 'scoreboard-configure') {
       await handleConfigure(interaction);
     } else if (interaction.commandName === 'scoreboard-submit') {
       await handleSubmit(interaction);
@@ -57,62 +59,104 @@ client.on('interactionCreate', async (interaction: Interaction) => {
   }
 });
 
+async function handleSetup(interaction: any): Promise<void> {
+  const guildId = interaction.guildId;
+  if (!guildId) {
+    await interaction.reply({
+      content: 'Error: This command can only be used within a server (guild).',
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  const mode = interaction.options.getString('mode', true).trim();
+  const sheetsUrl = interaction.options.getString('sheets_url', true).trim();
+  const resolutions = interaction.options.getString('resolutions', true).trim();
+
+  try {
+    const existingConfig = await getConfiguration(guildId);
+
+    await setConfiguration({
+      guildId,
+      mode,
+      sheetsUrl,
+      resolutions,
+      targetChannelId: existingConfig ? existingConfig.targetChannelId : null,
+      errorChannelId: existingConfig ? existingConfig.errorChannelId : null,
+      pingRoleId: existingConfig ? existingConfig.pingRoleId : null,
+    });
+
+    await interaction.reply({
+      content: `Technical scoreboard connection settings saved successfully!\n` +
+        `- **Mode**: \`${mode}\`\n` +
+        `- **Sheets URL**: <${sheetsUrl}>\n` +
+        `- **Resolutions**: \`${resolutions}\``,
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (error) {
+    console.error('Error saving server technical setup:', error);
+    await interaction.reply({
+      content: 'An error occurred while saving the technical setup.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+}
+
 async function handleConfigure(interaction: any): Promise<void> {
   const guildId = interaction.guildId;
   if (!guildId) {
-    await interaction.reply({ 
-      content: 'Error: This command can only be used within a server (guild).', 
-      flags: MessageFlags.Ephemeral 
+    await interaction.reply({
+      content: 'Error: This command can only be used within a server (guild).',
+      flags: MessageFlags.Ephemeral
     });
     return;
   }
 
   const targetChannel = interaction.options.getChannel('channel', true);
-  const mode = interaction.options.getString('mode', true).trim();
-  const sheetsUrl = interaction.options.getString('sheets_url', true).trim();
-  const resolutions = interaction.options.getString('resolutions', true).trim();
   const errorChannel = interaction.options.getChannel('error_channel');
+  const pingRole = interaction.options.getRole('ping_role');
 
   if (targetChannel.type !== ChannelType.GuildText) {
-    await interaction.reply({ 
-      content: 'Error: The target channel must be a text channel.', 
-      flags: MessageFlags.Ephemeral 
+    await interaction.reply({
+      content: 'Error: The target channel must be a text channel.',
+      flags: MessageFlags.Ephemeral
     });
     return;
   }
 
   if (errorChannel && errorChannel.type !== ChannelType.GuildText) {
-    await interaction.reply({ 
-      content: 'Error: The error channel must be a text channel.', 
-      flags: MessageFlags.Ephemeral 
+    await interaction.reply({
+      content: 'Error: The error channel must be a text channel.',
+      flags: MessageFlags.Ephemeral
     });
     return;
   }
 
   try {
+    const existingConfig = await getConfiguration(guildId);
+
     await setConfiguration({
       guildId,
       targetChannelId: targetChannel.id,
-      mode,
-      sheetsUrl,
-      resolutions,
       errorChannelId: errorChannel ? errorChannel.id : null,
+      pingRoleId: pingRole ? pingRole.id : null,
+      mode: existingConfig ? existingConfig.mode : null,
+      sheetsUrl: existingConfig ? existingConfig.sheetsUrl : null,
+      resolutions: existingConfig ? existingConfig.resolutions : null,
     });
 
     await interaction.reply({
-      content: `Configuration successfully saved for this server!\n` +
-               `- **Target Channel**: <#${targetChannel.id}>\n` +
-               `- **Mode**: \`${mode}\`\n` +
-               `- **Sheets URL**: <${sheetsUrl}>\n` +
-               `- **Resolutions**: \`${resolutions}\`\n` +
-               `- **Error Channel**: ${errorChannel ? `<#${errorChannel.id}>` : '*None configured*'}`,
+      content: `Server communication settings saved successfully!\n` +
+        `- **Target Channel**: <#${targetChannel.id}>\n` +
+        `- **Error Channel**: ${errorChannel ? `<#${errorChannel.id}>` : '*None configured*'}\n` +
+        `- **Ping Role**: ${pingRole ? `<@&${pingRole.id}>` : '*None configured*'}`,
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
     console.error('Error saving server configuration:', error);
-    await interaction.reply({ 
-      content: 'An error occurred while saving the configuration.', 
-      flags: MessageFlags.Ephemeral 
+    await interaction.reply({
+      content: 'An error occurred while saving the configuration.',
+      flags: MessageFlags.Ephemeral
     });
   }
 }
@@ -137,9 +181,9 @@ async function handleSubmit(interaction: any): Promise<void> {
 
   const config = await getConfiguration(guildId);
 
-  if (!config) {
+  if (!config || !config.mode || !config.sheetsUrl || !config.resolutions || !config.targetChannelId) {
     await interaction.reply({
-      content: 'This server is not configured yet. An administrator must configure it first using `/scoreboard-configure`.',
+      content: 'This server is not fully configured yet. An administrator must run `/scoreboard-setup` (technical connection) and `/scoreboard-configure` (communication channels) first.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -193,7 +237,7 @@ async function handleAutocomplete(interaction: any): Promise<void> {
       .map(r => r.trim())
       .filter(r => r.length > 0);
 
-    const filtered = availableResolutions.filter(res => 
+    const filtered = availableResolutions.filter(res =>
       res.toLowerCase().includes(focusedOption.value.toLowerCase())
     );
 
@@ -204,9 +248,9 @@ async function handleAutocomplete(interaction: any): Promise<void> {
 }
 
 async function processWorkflowInBackground(
-  runId: number, 
-  config: any, 
-  clipUrl: string, 
+  runId: number,
+  config: any,
+  clipUrl: string,
   userId: string
 ): Promise<void> {
   try {
@@ -218,20 +262,22 @@ async function processWorkflowInBackground(
       throw new Error(`Target channel ${config.targetChannelId} could not be found.`);
     }
 
-    const attachments = files.map(file => 
+    const attachments = files.map(file =>
       new AttachmentBuilder(file.buffer, { name: file.name })
     );
 
+    const ping = config.pingRoleId ? `<@&${config.pingRoleId}> ` : '';
     await targetChannel.send({
-      content: `### New Scoreboard Processed!\n` +
-               `- **Sheets**: <${config.sheetsUrl}>\n` +
-               `- **Clip**: <${clipUrl}>`,
+      content: `**Stats are up!**\n` +
+        `- [Google sheets 🔗](${config.sheetsUrl})\n` +
+        `- [Source Clip 🎬](${clipUrl})\n` +
+        `${ping}`,
       files: attachments,
     });
   } catch (error: any) {
     const errorMessage = `Scoreboard submission processing failed.\n` +
-                         `- **Clip**: ${clipUrl}\n` +
-                         `- **Error**: ${error.message || error}`;
+      `- **Clip**: ${clipUrl}\n` +
+      `- **Error**: ${error.message || error}`;
 
     console.error(errorMessage);
 
@@ -240,8 +286,8 @@ async function processWorkflowInBackground(
       const user = await client.users.fetch(userId);
       if (user) {
         await user.send(`❌ Your scoreboard submission failed:\n` +
-                        `- **Clip**: ${clipUrl}\n` +
-                        `- **Reason**: ${error.message || error}`);
+          `- **Clip**: ${clipUrl}\n` +
+          `- **Reason**: ${error.message || error}`);
       }
     } catch (dmError) {
       console.warn(`Could not send failure DM to user ${userId}:`, dmError);

@@ -8,15 +8,21 @@ Bot owner will issue access. Server admin has to install bot
 
 ## Commands
 
-### `/scoreboard-configure`
-Configures the Discord server's (guild's) settings.
+### `/scoreboard-setup`
+Configures the technical scoreboard connection settings.
 * **Permissions**: Defaults to requiring `Manage Guild` (Manage Server) permission.
 * **Arguments**:
-  * `channel` (Channel, Required): The target channel where successful scoreboard screenshots and sheet links will be posted.
   * `mode` (String, Required): The prefix for the workflow mode (e.g., `opr`, `zoo`).
   * `sheets_url` (String, Required): The URL of the Google Sheet to post with the screenshots.
   * `resolutions` (String, Required): A comma-separated list of allowed resolutions (e.g., `1920,2560`) that will populate the submit command's autocomplete.
+
+### `/scoreboard-configure`
+Configures the communication settings for the server.
+* **Permissions**: Defaults to requiring `Manage Guild` (Manage Server) permission.
+* **Arguments**:
+  * `channel` (Channel, Required): The target channel where successful scoreboard screenshots and sheet links will be posted.
   * `error_channel` (Channel, Optional): The channel where processing error messages will be sent.
+  * `ping_role` (Role, Optional): The role to ping when stats are posted.
 
 ### `/scoreboard-submit`
 Submits a clip to the processing pipeline. Can be run in any channel on the server.

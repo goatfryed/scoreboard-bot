@@ -51,6 +51,8 @@ Submits a clip to the processing pipeline. Can be run in any channel on the serv
 ### Tools
 typescript, pnpm
 
+Hosted on https://wispbyte.com/
+
 ### Process
 Upload details
 

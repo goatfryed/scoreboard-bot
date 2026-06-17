@@ -31,6 +31,9 @@ const client = new Client({
   ],
 });
 
+// Track active workflow runs per server to prevent concurrent submissions
+const activeSubmissions = new Set<string>();
+
 client.once(Events.ClientReady, async () => {
   try {
     await initDatabase();
@@ -124,6 +127,14 @@ async function handleSubmit(interaction: any): Promise<void> {
     return;
   }
 
+  if (activeSubmissions.has(guildId)) {
+    await interaction.reply({
+      content: '⚠️ A scoreboard is currently being processed for this server. Please wait for the current run to complete before submitting another.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
   const config = await getConfiguration(guildId);
 
   if (!config) {
@@ -138,6 +149,9 @@ async function handleSubmit(interaction: any): Promise<void> {
   const resolution = interaction.options.getString('resolution', true).trim();
   const finalMode = `${config.mode}${resolution}`;
 
+  // Acquire lock
+  activeSubmissions.add(guildId);
+
   try {
     const runId = await dispatchWorkflow(clipUrl, finalMode);
 
@@ -148,6 +162,8 @@ async function handleSubmit(interaction: any): Promise<void> {
     // Run the processing pipeline in the background
     processWorkflowInBackground(runId, config, clipUrl, interaction.user.id);
   } catch (error: any) {
+    // Release lock on immediate dispatch failure
+    activeSubmissions.delete(guildId);
     console.error('Failed to dispatch workflow:', error);
     await interaction.reply({
       content: `Error: Failed to trigger the processing pipeline. Details: ${error.message || error}`,
@@ -242,6 +258,9 @@ async function processWorkflowInBackground(
         console.error(`Could not send error log to channel ${config.errorChannelId}:`, chanError);
       }
     }
+  } finally {
+    // Always release lock when processing finishes
+    activeSubmissions.delete(config.guildId);
   }
 }
 

@@ -1,80 +1,13 @@
-import { SlashCommandBuilder, PermissionFlagsBits, REST, Routes } from 'discord.js';
+import { REST, Routes } from 'discord.js';
 import dotenv from 'dotenv';
+import { setupCommand } from './commands/setup.js';
+import { configureCommand } from './commands/configure.js';
+import { resolutionCommand } from './commands/resolution.js';
+import { submitCommand } from './commands/submit.js';
 
 // Load env files
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
-
-export const setupCommand = new SlashCommandBuilder()
-  .setName('scoreboard-setup')
-  .setDescription('Configures the technical scoreboard connection settings')
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  .addStringOption(option =>
-    option.setName('mode')
-      .setDescription('The processing rule set. Ask you bot admin which one to use.')
-      .setRequired(true)
-  )
-  .addStringOption(option =>
-    option.setName('sheets_url')
-      .setDescription('The URL of the Google Sheet')
-      .setRequired(true)
-  )
-  .addStringOption(option =>
-    option.setName('resolutions')
-      .setDescription('Comma-separated list of supported resolutions (e.g. 1920,2560)')
-      .setRequired(true)
-  );
-
-export const configureCommand = new SlashCommandBuilder()
-  .setName('scoreboard-configure')
-  .setDescription('Configures the communication settings for the server')
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  .addChannelOption(option =>
-    option.setName('channel')
-      .setDescription('The target channel where screenshots and sheet links will be posted')
-      .setRequired(true)
-  )
-  .addChannelOption(option =>
-    option.setName('error_channel')
-      .setDescription('The channel where processing error messages will be sent')
-      .setRequired(false)
-  )
-  .addRoleOption(option =>
-    option.setName('ping_role')
-      .setDescription('The role to ping when stats are posted')
-      .setRequired(false)
-  );
-
-export const resolutionCommand = new SlashCommandBuilder()
-  .setName('scoreboard-resolution')
-  .setDescription('Configures a default resolution for a specific streamer on this server')
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  .addStringOption(option =>
-    option.setName('streamer')
-      .setDescription('Twitch username of the streamer')
-      .setRequired(true)
-  )
-  .addStringOption(option =>
-    option.setName('resolution')
-      .setDescription('The default resolution for this streamer (e.g. 1920)')
-      .setRequired(true)
-  );
-
-export const submitCommand = new SlashCommandBuilder()
-  .setName('scoreboard-submit')
-  .setDescription('Submits a twitch clip to the scoreboard processing pipeline')
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-  .addStringOption(option =>
-    option.setName('clip')
-      .setDescription('Twitch clip URL')
-      .setRequired(true)
-  )
-  .addStringOption(option =>
-    option.setName('resolution')
-      .setDescription('The resolution of the video')
-      .setAutocomplete(true)
-      .setRequired(false)
-  );
 
 export const commands = [setupCommand, configureCommand, resolutionCommand, submitCommand];
 
@@ -178,6 +111,8 @@ async function registerCommands() {
 const isDirectRun = process.argv[1] && (
   process.argv[1].endsWith('commands.ts') ||
   process.argv[1].endsWith('commands.js') ||
+  process.argv[1].endsWith('registration.ts') ||
+  process.argv[1].endsWith('registration.js') ||
   process.argv[1].endsWith('register')
 );
 

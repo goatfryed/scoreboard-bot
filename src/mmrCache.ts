@@ -10,10 +10,11 @@ export interface MmrPlayerRow {
   delta: string;
 }
 
+const BACKOFF_DELAYS = [5000, 10000, 30000, 60000]; // 5s, 10s, 30s, 60s
 let cachedMmrData: MmrPlayerRow[] | null = null;
 let prefetchTimer: NodeJS.Timeout | null = null;
 
-export async function prefetchMmr(): Promise<void> {
+export async function prefetchMmr(retryCount = 0): Promise<void> {
   // Clear any existing timer to avoid overlapping schedules
   if (prefetchTimer) {
     clearTimeout(prefetchTimer);
@@ -23,6 +24,8 @@ export async function prefetchMmr(): Promise<void> {
   const SPREADSHEET_ID = process.env.MMR_SPREADSHEET_ID || '1lJrTw9okwrOi9CyzLr_M3ecYi8cDcG4m-4Gtx-NsgCQ';
   const GID = process.env.MMR_SHEET_GID || '558216310';
   const TTL_MS = parseInt(process.env.MMR_CACHE_TTL_MS || '300000', 10);
+
+  let success = false;
 
   try {
     console.log(`[MMR Cache] Starting MMR prefetch from spreadsheet: ${SPREADSHEET_ID}, tab GID: ${GID}`);
@@ -94,13 +97,29 @@ export async function prefetchMmr(): Promise<void> {
 
     cachedMmrData = parsed;
     console.log(`[MMR Cache] Successfully loaded ${parsed.length} rows of MMR data.`);
+    success = true;
   } catch (error: any) {
     console.error('[MMR Cache] Failed to prefetch MMR data:', error.message || error);
-  } finally {
-    // Schedule next prefetch (prefetch-on-expiry)
+  }
+
+  // Schedule next attempt depending on success/failure state
+  if (success) {
     prefetchTimer = setTimeout(() => {
-      prefetchMmr();
+      prefetchMmr(0); // Reset retryCount to 0
     }, TTL_MS);
+  } else {
+    if (retryCount < BACKOFF_DELAYS.length) {
+      const delay = BACKOFF_DELAYS[retryCount];
+      console.log(`[MMR Cache] Retrying prefetch in ${delay / 1000} seconds (attempt ${retryCount + 1}/${BACKOFF_DELAYS.length})...`);
+      prefetchTimer = setTimeout(() => {
+        prefetchMmr(retryCount + 1);
+      }, delay);
+    } else {
+      console.warn(`[MMR Cache] All ${BACKOFF_DELAYS.length} retries failed. Rescheduling next regular prefetch in ${TTL_MS / 1000} seconds.`);
+      prefetchTimer = setTimeout(() => {
+        prefetchMmr(0); // Reset retryCount to 0
+      }, TTL_MS);
+    }
   }
 }
 

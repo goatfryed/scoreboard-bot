@@ -54,9 +54,17 @@ export async function handleStatus(interaction: ChatInputCommandInteraction): Pr
 
     // Extract values directly from the typed object keys
     const mmrStr = playerRow.mmr || '0';
-    const rankNum = playerRow.rank || 'N/A';
-    const totalPlayers = mmrData.length;
-    const rankStr = `${rankNum}/${totalPlayers}`;
+
+    // Count all ranked players (players with rank not equal to 0)
+    const rankedPlayersCount = mmrData.filter(row => {
+      const r = parseInt(row.rank || '0', 10);
+      return !isNaN(r) && r !== 0;
+    }).length;
+
+    const rankVal = parseInt(playerRow.rank || '0', 10);
+    const isUnranked = isNaN(rankVal) || rankVal === 0;
+    const rankStr = isUnranked ? 'Unranked. Play more!' : `${playerRow.rank}/${rankedPlayersCount}`;
+
     const gamesStr = playerRow.games || '0';
     const winsStr = playerRow.wins || '0';
     const lossesStr = playerRow.losses || '0';

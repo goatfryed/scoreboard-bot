@@ -1,4 +1,5 @@
 import { GoogleAuth } from 'google-auth-library';
+import * as https from 'https';
 
 export interface MmrPlayerRow {
   player: string;
@@ -30,8 +31,15 @@ export async function prefetchMmr(retryCount = 0): Promise<void> {
   try {
     console.log(`[MMR Cache] Starting MMR prefetch from spreadsheet: ${SPREADSHEET_ID}, tab GID: ${GID}`);
     
+    const httpsAgent = new https.Agent({ keepAlive: false });
+
     const auth = new GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      clientOptions: {
+        transporterOptions: {
+          agent: httpsAgent,
+        },
+      },
     });
 
     const client = await auth.getClient();
@@ -42,6 +50,7 @@ export async function prefetchMmr(retryCount = 0): Promise<void> {
 
     const authHeaders = {
       Authorization: `Bearer ${token.token}`,
+      Connection: 'close',
     };
 
     // 1. Fetch spreadsheet sheets metadata to map GID to sheet title

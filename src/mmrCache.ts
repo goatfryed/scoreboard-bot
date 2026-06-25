@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { GoogleAuth } from 'google-auth-library';
 
 export interface MmrPlayerRow {
   player: string;
@@ -27,20 +27,30 @@ export async function prefetchMmr(): Promise<void> {
   try {
     console.log(`[MMR Cache] Starting MMR prefetch from spreadsheet: ${SPREADSHEET_ID}, tab GID: ${GID}`);
     
-    const auth = new google.auth.GoogleAuth({
+    const auth = new GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
-    const sheets = google.sheets({ version: 'v4', auth });
+    const client = await auth.getClient();
+    const token = await client.getAccessToken();
+    if (!token.token) {
+      throw new Error('Failed to acquire Google Access Token');
+    }
 
-    // 1. Get spreadsheet metadata to map GID to sheet title
-    const spreadsheet = await sheets.spreadsheets.get({
-      spreadsheetId: SPREADSHEET_ID,
-      fields: 'sheets.properties',
-    });
+    const authHeaders = {
+      Authorization: `Bearer ${token.token}`,
+    };
 
-    const targetSheet = spreadsheet.data.sheets?.find(
-      s => String(s.properties?.sheetId) === String(GID)
+    // 1. Fetch spreadsheet sheets metadata to map GID to sheet title
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties`;
+    const metaResponse = await fetch(metaUrl, { headers: authHeaders });
+    if (!metaResponse.ok) {
+      throw new Error(`Failed to fetch spreadsheet metadata: HTTP ${metaResponse.status} ${metaResponse.statusText}`);
+    }
+
+    const metaData = (await metaResponse.json()) as any;
+    const targetSheet = metaData.sheets?.find(
+      (s: any) => String(s.properties?.sheetId) === String(GID)
     );
 
     if (!targetSheet || !targetSheet.properties?.title) {
@@ -50,13 +60,16 @@ export async function prefetchMmr(): Promise<void> {
     const sheetTitle = targetSheet.properties.title;
     console.log(`[MMR Cache] Mapped GID ${GID} to sheet title: "${sheetTitle}"`);
 
-    // 2. Fetch sheet values using the title as the range
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: sheetTitle,
-    });
+    // 2. Fetch the sheet values using the title as the range
+    const valuesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(sheetTitle)}`;
+    const valuesResponse = await fetch(valuesUrl, { headers: authHeaders });
+    if (!valuesResponse.ok) {
+      throw new Error(`Failed to fetch sheet values: HTTP ${valuesResponse.status} ${valuesResponse.statusText}`);
+    }
 
-    const rawRows = response.data.values;
+    const valuesData = (await valuesResponse.json()) as any;
+    const rawRows = valuesData.values as string[][];
+
     if (!rawRows || rawRows.length === 0) {
       throw new Error('Spreadsheet returned empty data.');
     }

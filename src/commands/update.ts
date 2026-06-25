@@ -109,17 +109,17 @@ async function processUpdateInBackground(
       throw new Error(`Could not find the last scoreboard message (ID: ${lastSub.messageId}) in the target channel.`);
     }
 
-    // Keep only the 'stitched.png' attachment from the original message
+    // Keep only the 'scoreboard.png' or 'stitched.png' attachment from the original message
     const keptAttachments = message.attachments
-      .filter(att => att.name === 'stitched.png')
+      .filter(att => att.name === 'scoreboard.png' || att.name === 'stitched.png')
       .map(att => ({ id: att.id }));
 
-    // Prepare the new screenshots
-    const newAttachments = files.map(file =>
-      new AttachmentBuilder(file.buffer, { name: file.name })
-    );
+    // Prepare the new screenshots (PNGs only)
+    const newAttachments = files
+      .filter(file => file.name.toLowerCase().endsWith('.png'))
+      .map(file => new AttachmentBuilder(file.buffer, { name: file.name }));
 
-    // Edit message: replace other attachments with the new screenshots, keeping stitched.png
+    // Edit message: replace other attachments with the new screenshots, keeping the scoreboard image
     await message.edit({
       attachments: keptAttachments,
       files: newAttachments,

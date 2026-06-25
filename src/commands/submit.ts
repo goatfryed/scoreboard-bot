@@ -173,13 +173,25 @@ async function processWorkflowInBackground(
       throw new Error(`Target channel ${config.targetChannelId} could not be found.`);
     }
 
-    const attachments = files.map(file =>
-      new AttachmentBuilder(file.buffer, { name: file.name })
-    );
+    const metaFile = files.find(f => f.name.toLowerCase() === 'meta.json');
+    let matchId: string | null = null;
+    if (metaFile) {
+      try {
+        const meta = JSON.parse(metaFile.buffer.toString('utf-8'));
+        matchId = meta.matchId || null;
+      } catch (err) {
+        console.error('Failed to parse meta.json:', err);
+      }
+    }
 
+    const attachments = files
+      .filter(file => file.name.toLowerCase().endsWith('.png'))
+      .map(file => new AttachmentBuilder(file.buffer, { name: file.name }));
+
+    const heading = matchId ? `Match ${matchId} tracked!` : 'Stats are up!';
     const ping = config.pingRoleId ? `<@&${config.pingRoleId}> ` : '';
     const message = await targetChannel.send({
-      content: `Stats are up!\n` +
+      content: `${heading}\n` +
         `- 📊 [Google Sheets](${config.sheetsUrl})\n` +
         `- 🎬 [Source Clip](${clipUrl})\n` +
         `${ping}`,

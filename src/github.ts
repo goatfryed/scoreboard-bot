@@ -115,7 +115,7 @@ export async function downloadArtifacts(runId: number): Promise<ArtifactFile[]> 
     run_id: runId,
   });
 
-  const pngFiles: ArtifactFile[] = [];
+  const files: ArtifactFile[] = [];
 
   for (const artifact of data.artifacts) {
     // Download the artifact archive (ZIP)
@@ -131,8 +131,8 @@ export async function downloadArtifacts(runId: number): Promise<ArtifactFile[]> 
     const entries = zip.getEntries();
 
     for (const entry of entries) {
-      if (!entry.isDirectory && entry.entryName.toLowerCase().endsWith('.png')) {
-        pngFiles.push({
+      if (!entry.isDirectory) {
+        files.push({
           name: entry.name,
           buffer: entry.getData(),
         });
@@ -140,5 +140,5 @@ export async function downloadArtifacts(runId: number): Promise<ArtifactFile[]> 
     }
   }
 
-  return pngFiles;
+  return files;
 }

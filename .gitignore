@@ -29,3 +29,6 @@ Thumbs.db
 
 # IDE configuration
 .vscode/
+
+# Google Credentials
+credentials.json

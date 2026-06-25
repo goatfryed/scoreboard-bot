@@ -60,6 +60,13 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS user_whitelist (
+      discordUserId TEXT PRIMARY KEY,
+      ingameName TEXT
+    )
+  `);
+
   // Migration: Add pingRoleId column if it does not exist in an already existing table
   try {
     await db.exec('ALTER TABLE configurations ADD COLUMN pingRoleId TEXT');
@@ -167,3 +174,22 @@ export async function deleteConfiguration(guildId: string): Promise<void> {
   if (!db) throw new Error('Database not initialized');
   await db.run('DELETE FROM configurations WHERE guildId = ?', guildId);
 }
+
+export async function whitelistUser(discordUserId: string, ingameName: string): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+  await db.run(
+    'INSERT OR REPLACE INTO user_whitelist (discordUserId, ingameName) VALUES (?, ?)',
+    discordUserId,
+    ingameName
+  );
+}
+
+export async function getWhitelistUser(discordUserId: string): Promise<string | null> {
+  if (!db) throw new Error('Database not initialized');
+  const result = await db.get<{ ingameName: string }>(
+    'SELECT ingameName FROM user_whitelist WHERE discordUserId = ?',
+    discordUserId
+  );
+  return result ? result.ingameName : null;
+}
+

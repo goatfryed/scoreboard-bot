@@ -5,12 +5,14 @@ import { configureCommand } from './commands/configure.js';
 import { resolutionCommand } from './commands/resolution.js';
 import { submitCommand } from './commands/submit.js';
 import { updateCommand } from './commands/update.js';
+import { whitelistCommand } from './commands/whitelist.js';
+import { statusCommand } from './commands/status.js';
 
 // Load env files
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 
-export const commands = [setupCommand, configureCommand, resolutionCommand, submitCommand, updateCommand];
+export const commands = [setupCommand, configureCommand, resolutionCommand, submitCommand, updateCommand, whitelistCommand, statusCommand];
 
 async function registerCommands() {
   const token = process.env.DISCORD_TOKEN;
@@ -29,10 +31,16 @@ async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(token);
 
   try {
-    console.log('Registering configure, setup, resolution, and update commands globally...');
+    console.log('Registering configure, setup, resolution, update, and status commands globally...');
     await rest.put(
       Routes.applicationCommands(clientId),
-      { body: [setupCommand.toJSON(), configureCommand.toJSON(), resolutionCommand.toJSON(), updateCommand.toJSON()] }
+      { body: [
+        setupCommand.toJSON(),
+        configureCommand.toJSON(),
+        resolutionCommand.toJSON(),
+        updateCommand.toJSON(),
+        statusCommand.toJSON()
+      ] }
     );
 
     // Fetch all servers the bot is currently joined to
@@ -49,13 +57,18 @@ async function registerCommands() {
       console.log(`Registering submit command to whitelisted guilds: ${whitelistedGuilds.join(', ')}`);
 
       // Register commands to whitelisted guilds
+      const primaryGuildId = whitelistedGuilds[0];
       for (const guildId of whitelistedGuilds) {
         try {
+          const guildBody = [submitCommand.toJSON()];
+          if (guildId === primaryGuildId) {
+            guildBody.push(whitelistCommand.toJSON());
+          }
           await rest.put(
             Routes.applicationGuildCommands(clientId, guildId),
-            { body: [submitCommand.toJSON()] }
+            { body: guildBody }
           );
-          console.log(`Successfully registered submit command to guild: ${guildId}`);
+          console.log(`Successfully registered guild commands for guild: ${guildId}`);
         } catch (guildError: any) {
           if (guildError.status === 403 || guildError.code === 50001) {
             console.warn(`WARNING: Failed to register submit command for guild ${guildId} (Missing Access). Ensure the bot is invited to this server with the 'applications.commands' scope.`);

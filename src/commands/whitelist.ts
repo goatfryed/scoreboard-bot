@@ -10,6 +10,8 @@ export const whitelistCommand = new SlashCommandBuilder()
   .setName('nw-mmr-whitelist')
   .setDescription('Maps a Discord user to their in-game character name for MMR lookup')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .setIntegrationTypes([0])
+  .setContexts([0])
   .addUserOption(option =>
     option.setName('user')
       .setDescription('The Discord user to whitelist')

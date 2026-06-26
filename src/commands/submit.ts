@@ -14,6 +14,8 @@ export const submitCommand = new SlashCommandBuilder()
   .setName('scoreboard-submit')
   .setDescription('Submits a twitch clip to the scoreboard processing pipeline')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .setIntegrationTypes([0])
+  .setContexts([0])
   .addStringOption(option =>
     option.setName('clip')
       .setDescription('Twitch clip URL')

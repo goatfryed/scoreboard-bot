@@ -5,6 +5,8 @@ export const configureCommand = new SlashCommandBuilder()
   .setName('scoreboard-configure')
   .setDescription('Configures the communication settings for the server')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .setIntegrationTypes([0])
+  .setContexts([0])
   .addChannelOption(option =>
     option.setName('channel')
       .setDescription('The target channel where screenshots and sheet links will be posted')

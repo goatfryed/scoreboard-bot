@@ -12,7 +12,9 @@ import { dispatchWorkflow, pollWorkflowRun, downloadArtifacts } from '../github.
 export const updateCommand = new SlashCommandBuilder()
   .setName('scoreboard-update')
   .setDescription('Updates the screenshots of the last scoreboard message')
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .setIntegrationTypes([0])
+  .setContexts([0]);
 
 // Track active updates per server to prevent concurrent runs
 const activeUpdates = new Set<string>();

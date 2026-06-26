@@ -5,6 +5,8 @@ export const setupCommand = new SlashCommandBuilder()
   .setName('scoreboard-setup')
   .setDescription('Configures the technical scoreboard connection settings')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .setIntegrationTypes([0])
+  .setContexts([0])
   .addStringOption(option =>
     option.setName('mode')
       .setDescription('The processing rule set. Ask you bot admin which one to use.')

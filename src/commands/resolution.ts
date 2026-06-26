@@ -5,6 +5,8 @@ export const resolutionCommand = new SlashCommandBuilder()
   .setName('scoreboard-resolution')
   .setDescription('Configures a default resolution for a specific streamer on this server')
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .setIntegrationTypes([0])
+  .setContexts([0])
   .addStringOption(option =>
     option.setName('streamer')
       .setDescription('Twitch username of the streamer')
